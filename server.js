@@ -7,6 +7,8 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+// Serve static frontend
+app.use(express.static("public"));
 
 // Route to handle AI requests
 app.post("/chat", async (req, res) => {

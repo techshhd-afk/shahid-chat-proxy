@@ -2,6 +2,7 @@
   "name": "multi-ai-chat-premium-backend",
   "version": "1.0.0",
   "description": "Backend for Multi-AI Chat Premium to handle API requests securely.",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
