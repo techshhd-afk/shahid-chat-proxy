@@ -1,80 +1,39 @@
 import express from "express";
-import fetch from "node-fetch";
+import axios from "axios";
 import cors from "cors";
 import dotenv from "dotenv";
 
 dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 5000;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
 app.use(cors());
 app.use(express.json());
 
-// ✅ Ping route (for connection test)
-app.get("/api/ping", (req, res) => {
-  res.json({ status: "ok", message: "Proxy running fine 🚀" });
-});
-
-// ✅ Chat endpoint
-app.post("/api/chat", async (req, res) => {
+// Route to handle AI requests
+app.post("/chat", async (req, res) => {
   try {
-    const { message, model = "gpt-4o-mini" } = req.body;
+    const { model, message } = req.body;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: model || "gpt-4o-mini",
+        messages: [{ role: "user", content: message }],
+        max_tokens: 300,
+        temperature: 0.7
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "You are Kashmiri Chat Pro — created by Shahid." },
-          { role: "user", content: message },
-        ],
-        max_tokens: 500,
-      }),
-    });
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        }
+      }
+    );
 
-    const data = await response.json();
-    const reply = data?.choices?.[0]?.message?.content || "⚠️ No reply from OpenAI";
-    res.json({ reply });
-  } catch (err) {
-    console.error("Chat error:", err);
-    res.status(500).json({ error: "Chat request failed" });
+    res.json({ reply: response.data.choices[0].message.content });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ Image endpoint
-app.post("/api/image", async (req, res) => {
-  try {
-    const { prompt, size = "512x512", n = 1, model = "gpt-image-1" } = req.body;
-
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        size,
-        n,
-      }),
-    });
-
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error("Image error:", err);
-    res.status(500).json({ error: "Image request failed" });
-  }
-});
-
-// ✅ Start server
-app.listen(PORT, () => {
-  console.log(`✅ Proxy server running on http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
