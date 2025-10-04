@@ -1,80 +1,59 @@
-import express from "express";
-import fetch from "node-fetch";
-import cors from "cors";
-import dotenv from "dotenv";
+const chatMessages = document.getElementById('chatMessages');
 
-dotenv.config();
+async function sendMsg(){  
+  const text = inputEl.value.trim();
+  if(!text) return;
+  inputEl.value = "";
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  // Append user message
+  const userDiv = document.createElement('div');
+  userDiv.style.alignSelf = "flex-end";
+  userDiv.style.background = "var(--user-msg)";
+  userDiv.style.color = "#fff";
+  userDiv.style.padding = "8px 12px";
+  userDiv.style.borderRadius = "12px";
+  userDiv.textContent = text;
+  chatMessages.appendChild(userDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 
-app.use(cors());
-app.use(express.json());
+  // Clear AI cards & show loading
+  models.forEach(m => {
+    const replyEl = document.querySelector('#'+m.name+'-card .ai-reply');
+    replyEl.textContent = "";
+    document.querySelector('#'+m.name+'-card .progress-dots').style.display = "flex";
+  });
 
-// ✅ Ping route (for connection test)
-app.get("/api/ping", (req, res) => {
-  res.json({ status: "ok", message: "Proxy running fine 🚀" });
-});
+  for(const m of models){
+    try{
+      const payload = {model:m.model,messages:[{role:"system",content:`You are ${m.name} AI.`},{role:"user",content:text}],max_tokens:512,temperature:0.7};
+      const res = await fetch("https://api.openai.com/v1/chat/completions",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+m.apiKey},
+        body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content || "⚠️ No reply";
 
-// ✅ Chat endpoint
-app.post("/api/chat", async (req, res) => {
-  try {
-    const { message, model = "gpt-4o-mini" } = req.body;
+      // Update AI card
+      const replyEl = document.querySelector('#'+m.name+'-card .ai-reply');
+      replyEl.textContent = reply;
+      document.querySelector('#'+m.name+'-card .progress-dots').style.display="none";
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "You are Kashmiri Chat Pro — created by Shahid." },
-          { role: "user", content: message },
-        ],
-        max_tokens: 500,
-      }),
-    });
+      // Append AI message to chat
+      const aiDiv = document.createElement('div');
+      aiDiv.style.alignSelf = "flex-start";
+      aiDiv.style.background = "var(--bot-msg)";
+      aiDiv.style.color = "#000";
+      aiDiv.style.padding = "8px 12px";
+      aiDiv.style.borderRadius = "12px";
+      aiDiv.textContent = `${m.name}: ${reply}`;
+      chatMessages.appendChild(aiDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    const data = await response.json();
-    const reply = data?.choices?.[0]?.message?.content || "⚠️ No reply from OpenAI";
-    res.json({ reply });
-  } catch (err) {
-    console.error("Chat error:", err);
-    res.status(500).json({ error: "Chat request failed" });
+    } catch(e){
+      const replyEl = document.querySelector('#'+m.name+'-card .ai-reply');
+      replyEl.textContent="⚠️ Error: "+e.message;
+      document.querySelector('#'+m.name+'-card .progress-dots').style.display="none";
+    }
   }
-});
-
-// ✅ Image endpoint
-app.post("/api/image", async (req, res) => {
-  try {
-    const { prompt, size = "512x512", n = 1, model = "gpt-image-1" } = req.body;
-
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        size,
-        n,
-      }),
-    });
-
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error("Image error:", err);
-    res.status(500).json({ error: "Image request failed" });
-  }
-});
-
-// ✅ Start server
-app.listen(PORT, () => {
-  console.log(`✅ Proxy server running on http://localhost:${PORT}`);
-});
+}
