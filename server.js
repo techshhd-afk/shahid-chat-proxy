@@ -2,11 +2,20 @@ import express from "express";
 import axios from "axios";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "node:path";
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static frontend assets
+app.use(express.static("public"));
+
+// Root route serves the main UI
+app.get("/", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
+});
 
 // Route to handle AI requests
 app.post("/chat", async (req, res) => {
