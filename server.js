@@ -2,11 +2,19 @@ import express from "express";
 import axios from "axios";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static files (HTML frontend)
+app.use(express.static(__dirname));
 
 // Route to handle AI requests
 app.post("/chat", async (req, res) => {
@@ -35,5 +43,14 @@ app.post("/chat", async (req, res) => {
   }
 });
 
+// Serve the frontend
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Frontend available at http://localhost:${PORT}`);
+  console.log(`🤖 API endpoint: http://localhost:${PORT}/chat`);
+});
